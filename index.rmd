@@ -8,6 +8,16 @@ output: html_document
 ##
 ##   loading required libraries
 ##
+This is Harold Pollack's final assignment. 
+
+This assignment asked us to develop a classifier to distinguish five exercise modes, labeled A-E, as practiced by six identified users. The training set contained 19,622 examples and some 189 variables.  We then were asked to predict exercise modes within a test set of 20 examples.
+
+I used this as an opportunity to investigate several classifiers. Three are presented here: (1) one-vs-all logistic regression classifiers; (2) classification trees, and (3) random forest. I also explored lda and support vector machine approaches, but the results aren't shown in this document. I learned a lot doing this assignment--including that I have major hesitancy to commit on GitHub.
+
+Each of the classifiers provided insight. Random forest provided by far the most accurate fit to the training set. 
+
+Somewhat unfortunately, one factor variable—a timestamp—was by far the most important in predicting exercise mode. If I had more time, I would have implemented a cross-validation set to explore the over-fitting issue. It was clear from a simple cross-tab that the time-stamp was super-predictive.
+
 
 ```{R initialize libraries, warning=FALSE,message=FALSE}
 library("caret", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
@@ -24,13 +34,20 @@ library("tidyverse", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resou
 
 ##
 ## load training and testing datasets. 
-```{R read datasets}
+##
+Here are also some cross-tabs 
+```{R read datasets and descriptives}
 pml_training <- read.csv("pml-training.csv")
 pml_testing <- read.csv("pml-testing.csv")
+table(pml_training$classe)
+table(pml_training$classe,pml_training$user_name)
+table(pml_training$classe,pml_training$cvtd_timestamp)
+```
 ##
 ##
 ## Now set up classe dummies for one vs all
 ##
+```{R set up classe dummies for one vs. all}
 pml_training$classe_A <- as.numeric(pml_training$classe=="A")
 pml_training$classe_B <- as.numeric(pml_training$classe=="B")
 pml_training$classe_C <- as.numeric(pml_training$classe=="C")
@@ -51,7 +68,7 @@ pml_training$d_pedro<-as.numeric((pml_training$user_name=="pedro"))
 ```
 
 ##
-## user name dummies in test set
+## (User name dummies in test set)
 ##
 ```{R user names in test set}
 pml_testing$d_adelmo<-as.numeric((pml_testing$user_name=="adelmo"))
@@ -60,11 +77,11 @@ pml_testing$d_carlitos<-as.numeric((pml_testing$user_name=="carlitos"))
 pml_testing$d_eurico<-as.numeric((pml_testing$user_name=="eurico"))
 pml_testing$d_jeremy<-as.numeric((pml_testing$user_name=="jeremy"))
 pml_testing$d_pedro<-as.numeric((pml_testing$user_name=="pedro"))
-
+```
 ##
-## Time stamps
+## (Time stamps)
 ##
-
+``` {R time stamps, echo=FALSE}
 pml_training$cvtd_timestamp_d1 <- as.numeric(pml_training$cvtd_timestamp=="02/12/2011 14:58")    
  pml_testing$cvtd_timestamp_d1 <- as.numeric(pml_testing$cvtd_timestamp=="02/12/2011 14:58")    
 pml_training$cvtd_timestamp_d2 <- as.numeric(pml_training$cvtd_timestamp=="02/12/2011 14:58")    
@@ -77,9 +94,7 @@ pml_training$cvtd_timestamp_d5 <- as.numeric(pml_training$cvtd_timestamp=="02/12
  pml_testing$cvtd_timestamp_d5 <- as.numeric(pml_testing$cvtd_timestamp=="02/12/2011 14:58")    
 pml_training$cvtd_timestamp_d6 <- as.numeric(pml_training$cvtd_timestamp=="02/12/2011 14:58")    
  pml_testing$cvtd_timestamp_d6 <- as.numeric(pml_testing$cvtd_timestamp=="02/12/2011 14:58")    
-```
  
-```{R}
 pml_training$cvtd_timestamp_d7 <- as.numeric(pml_training$cvtd_timestamp=="02/12/2011 14:58")    
  pml_testing$cvtd_timestamp_d7 <- as.numeric(pml_testing$cvtd_timestamp=="02/12/2011 14:58")    
  pml_training$cvtd_timestamp_d8 <- as.numeric(pml_training$cvtd_timestamp=="02/12/2011 14:59") 
@@ -111,17 +126,66 @@ pml_training$cvtd_timestamp_d7 <- as.numeric(pml_training$cvtd_timestamp=="02/12
 ```
 
 ##
-## Time stamp factor
+## (Time stamp and username as factor)
 ##
-```{R}
+```{R time stamp factor, echo=FALSE}
 pml_training$cvtd_timestamp.f<-as.factor(pml_training$cvtd_timestamp)
 pml_testing$cvtd_timestamp.f<-as.factor(pml_testing$cvtd_timestamp)
+pml_training$user_name.f<-as.factor(pml_training$user_name)
+pml_testing$user_name.f<-as.factor(pml_testing$user_name)
+table(pml_training$user_name.f)
 ```
 
 ##
-## Classification trees
+## one vs all
 ##
-```{R}
+Now I implemented a one vs. all classifier.
+```{R one vs. all classifier, echo=FALSE, warning=FALSE}
+dlogit_classe_A <- glm(as.factor(classe_A) ~ roll_dumbbell + pitch_dumbbell+yaw_dumbbell+total_accel_belt+gyros_arm_x+gyros_arm_y+gyros_arm_z+magnet_forearm_x+magnet_forearm_y+magnet_forearm_z+d_adelmo+d_charles+d_carlitos+d_eurico+d_adelmo+d_jeremy+d_pedro+cvtd_timestamp_d1+cvtd_timestamp_d2+cvtd_timestamp_d3+cvtd_timestamp_d4+cvtd_timestamp_d5+cvtd_timestamp_d6+cvtd_timestamp_d7+cvtd_timestamp_d8+cvtd_timestamp_d9+cvtd_timestamp_d10+cvtd_timestamp_d11+cvtd_timestamp_d12+cvtd_timestamp_d13+cvtd_timestamp_d14+cvtd_timestamp_d15+cvtd_timestamp_d16+cvtd_timestamp_d17+cvtd_timestamp_d18+cvtd_timestamp_d19+cvtd_timestamp_d20 , data=pml_training, family=binomial(link="logit"))
+
+dlogit_classe_B <- glm(as.factor(classe_B) ~ roll_dumbbell + pitch_dumbbell+yaw_dumbbell+total_accel_belt+gyros_arm_x+gyros_arm_y+gyros_arm_z+magnet_forearm_x+magnet_forearm_y+magnet_forearm_z+d_adelmo+d_charles+d_carlitos+d_eurico+d_adelmo+d_jeremy+d_pedro+cvtd_timestamp_d1+cvtd_timestamp_d2+cvtd_timestamp_d3+cvtd_timestamp_d4+cvtd_timestamp_d5+cvtd_timestamp_d6+cvtd_timestamp_d7+cvtd_timestamp_d8+cvtd_timestamp_d9+cvtd_timestamp_d10+cvtd_timestamp_d11+cvtd_timestamp_d12+cvtd_timestamp_d13+cvtd_timestamp_d14+cvtd_timestamp_d15+cvtd_timestamp_d16+cvtd_timestamp_d17+cvtd_timestamp_d18+cvtd_timestamp_d19+cvtd_timestamp_d20 , data=pml_training, family=binomial(link="logit"))
+
+dlogit_classe_C <- glm(as.factor(classe_C) ~ roll_dumbbell + pitch_dumbbell+yaw_dumbbell+total_accel_belt+gyros_arm_x+gyros_arm_y+gyros_arm_z+magnet_forearm_x+magnet_forearm_y+magnet_forearm_z+d_adelmo+d_charles+d_carlitos+d_eurico+d_adelmo+d_jeremy+d_pedro+cvtd_timestamp_d1+cvtd_timestamp_d2+cvtd_timestamp_d3+cvtd_timestamp_d4+cvtd_timestamp_d5+cvtd_timestamp_d6+cvtd_timestamp_d7+cvtd_timestamp_d8+cvtd_timestamp_d9+cvtd_timestamp_d10+cvtd_timestamp_d11+cvtd_timestamp_d12+cvtd_timestamp_d13+cvtd_timestamp_d14+cvtd_timestamp_d15+cvtd_timestamp_d16+cvtd_timestamp_d17+cvtd_timestamp_d18+cvtd_timestamp_d19+cvtd_timestamp_d20 , data=pml_training, family=binomial(link="logit"))
+
+dlogit_classe_D <- glm(as.factor(classe_D) ~ roll_dumbbell + pitch_dumbbell+yaw_dumbbell+total_accel_belt+gyros_arm_x+gyros_arm_y+gyros_arm_z+magnet_forearm_x+magnet_forearm_y+magnet_forearm_z+d_adelmo+d_charles+d_carlitos+d_eurico+d_adelmo+d_jeremy+d_pedro+cvtd_timestamp_d1+cvtd_timestamp_d2+cvtd_timestamp_d3+cvtd_timestamp_d4+cvtd_timestamp_d5+cvtd_timestamp_d6+cvtd_timestamp_d7+cvtd_timestamp_d8+cvtd_timestamp_d9+cvtd_timestamp_d10+cvtd_timestamp_d11+cvtd_timestamp_d12+cvtd_timestamp_d13+cvtd_timestamp_d14+cvtd_timestamp_d15+cvtd_timestamp_d16+cvtd_timestamp_d17+cvtd_timestamp_d18+cvtd_timestamp_d19+cvtd_timestamp_d20 , data=pml_training, family=binomial(link="logit"))
+
+dlogit_classe_E <- glm(as.factor(classe_E) ~ roll_dumbbell + pitch_dumbbell+yaw_dumbbell+total_accel_belt+gyros_arm_x+gyros_arm_y+gyros_arm_z+magnet_forearm_x+magnet_forearm_y+magnet_forearm_z+d_adelmo+d_charles+d_carlitos+d_eurico+d_adelmo+d_jeremy+d_pedro+cvtd_timestamp_d1+cvtd_timestamp_d2+cvtd_timestamp_d3+cvtd_timestamp_d4+cvtd_timestamp_d5+cvtd_timestamp_d6+cvtd_timestamp_d7+cvtd_timestamp_d8+cvtd_timestamp_d9+cvtd_timestamp_d10+cvtd_timestamp_d11+cvtd_timestamp_d12+cvtd_timestamp_d13+cvtd_timestamp_d14+cvtd_timestamp_d15+cvtd_timestamp_d16+cvtd_timestamp_d17+cvtd_timestamp_d18+cvtd_timestamp_d19+cvtd_timestamp_d20 , data=pml_training, family=binomial(link="logit"))
+
+
+##
+## predicted probabilities
+##
+
+pred_A_training<-predict(dlogit_classe_A,pml_training,type="response")
+pred_B_training<-predict(dlogit_classe_B,pml_training,type="response")
+pred_C_training<-predict(dlogit_classe_C,pml_training,type="response")
+pred_D_training<-predict(dlogit_classe_D,pml_training,type="response")
+pred_E_training<-predict(dlogit_classe_E,pml_training,type="response")
+
+pred_A_testing<-predict(dlogit_classe_A,pml_testing,type="response")
+pred_B_testing<-predict(dlogit_classe_B,pml_testing,type="response")
+pred_C_testing<-predict(dlogit_classe_C,pml_testing,type="response")
+pred_D_testing<-predict(dlogit_classe_D,pml_testing,type="response")
+pred_E_testing<-predict(dlogit_classe_E,pml_testing,type="response")
+
+##
+## find maximum
+##
+
+pml_training$pred_probs_training<-data.frame(A=pred_A_training,B=pred_B_training,C=pred_C_training,D=pred_D_training,E=pred_E_training)
+pml_training$pmax_training<-apply(pml_training$pred_probs_training,1,which.max)
+
+pml_testing$pred_probs_testing<-data.frame(A=pred_A_testing,B=pred_B_testing,C=pred_C_testing,D=pred_D_testing,E=pred_E_testing)
+pml_testing$pmax_testing<-apply(pml_testing$pred_probs_testing,1,which.max)
+table(pml_training$pmax_training,pml_training$classe)
+```
+
+##
+## Classification trees--complete with cool diagram.
+##
+One interesting aspect here was that I had originally coded the timestamp as a series of dummy variables. The resulting classifier was notably worse. Note that the tree report is pretty opaque compared with the rpart.plot.
+
+```{R classification trees}
 tree_classe_rpart4_training <- rpart(classe ~ roll_dumbbell + pitch_dumbbell+yaw_dumbbell+total_accel_belt+gyros_arm_x+gyros_arm_y+gyros_arm_z+magnet_forearm_x+magnet_forearm_y+magnet_forearm_z+d_adelmo+d_charles+d_carlitos+d_eurico+d_jeremy+cvtd_timestamp.f, data=pml_training)
 tree_classe_rpart4_training
 rpart.plot(tree_classe_rpart4_training)
@@ -135,7 +199,8 @@ table(pred_classe4_testing)
 ##
 ## Random Forest
 ##
-```{R}
+This was by-far the most accurate classifier I was able to implement.If I had more time, I would have implemented a cross-validation set to explore the over-fitting issue. Note the dominance of the time stamp in the variable importance plot.
+```{R random forest}
 rf.tree_classe_ <- randomForest(classe ~ roll_dumbbell + pitch_dumbbell+yaw_dumbbell+total_accel_belt+gyros_arm_x+gyros_arm_y+gyros_arm_z+magnet_forearm_x+magnet_forearm_y+magnet_forearm_z+user_name+cvtd_timestamp.f, data=pml_training)
 
 pred_classe_rf=predict(rf.tree_classe_)
