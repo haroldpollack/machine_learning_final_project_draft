@@ -1,5 +1,5 @@
 ---
-title: "harold_floudering20180809"
+title: "harold_floundering20180809"
 author: "Harold Pollack"
 date: "8/10/2018"
 output: html_document
@@ -9,7 +9,7 @@ output: html_document
 ##   loading required libraries
 ##
 
-```{r}
+```{R initialize libraries, warning=FALSE,message=FALSE}
 library("caret", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
 library("dbplyr", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
 library("e1071", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
@@ -23,8 +23,8 @@ library("tidyverse", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resou
 ```
 
 ##
-## load training and testing datasets. This step seems to often fail
-```{R}
+## load training and testing datasets. 
+```{R read datasets}
 pml_training <- read.csv("pml-training.csv")
 pml_testing <- read.csv("pml-testing.csv")
 ##
@@ -38,7 +38,7 @@ pml_training$classe_D <- as.numeric(pml_training$classe=="D")
 pml_training$classe_E <- as.numeric(pml_training$classe=="E")
 ```
 
-```{R}
+```{R user names in training set}
 ##
 ## user name dummies in training set
 ##
@@ -53,7 +53,7 @@ pml_training$d_pedro<-as.numeric((pml_training$user_name=="pedro"))
 ##
 ## user name dummies in test set
 ##
-
+```{R user names in test set}
 pml_testing$d_adelmo<-as.numeric((pml_testing$user_name=="adelmo"))
 pml_testing$d_charles<-as.numeric((pml_testing$user_name=="charles"))
 pml_testing$d_carlitos<-as.numeric((pml_testing$user_name=="carlitos"))
@@ -77,7 +77,8 @@ pml_training$cvtd_timestamp_d5 <- as.numeric(pml_training$cvtd_timestamp=="02/12
  pml_testing$cvtd_timestamp_d5 <- as.numeric(pml_testing$cvtd_timestamp=="02/12/2011 14:58")    
 pml_training$cvtd_timestamp_d6 <- as.numeric(pml_training$cvtd_timestamp=="02/12/2011 14:58")    
  pml_testing$cvtd_timestamp_d6 <- as.numeric(pml_testing$cvtd_timestamp=="02/12/2011 14:58")    
-
+```
+ 
 ```{R}
 pml_training$cvtd_timestamp_d7 <- as.numeric(pml_training$cvtd_timestamp=="02/12/2011 14:58")    
  pml_testing$cvtd_timestamp_d7 <- as.numeric(pml_testing$cvtd_timestamp=="02/12/2011 14:58")    
