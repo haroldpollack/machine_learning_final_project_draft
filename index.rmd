@@ -16,7 +16,7 @@ I used this as an opportunity to investigate several classifiers. Three are pres
 
 Each of the classifiers provided insight. Random forest provided by far the most accurate fit to the training set. 
 
-Somewhat unfortunately, one factor variable—a timestamp—was by far the most important in predicting exercise mode. If I had more time, I would have implemented a cross-validation set to explore the over-fitting issue. It was clear from a simple cross-tab that the time-stamp was super-predictive.
+Somewhat unfortunately, one factor variable—a timestamp—was by far the most important in predicting exercise mode. If I had greater time, I would have implemented a cross-validation set to explore the over-fitting issue. It appeared clear from a simple cross-tab of the time stamp with outcomes that the time-stamp was super-predictive.
 
 
 ```{R initialize libraries, warning=FALSE,message=FALSE}
@@ -189,11 +189,11 @@ One interesting aspect here was that I had originally coded the timestamp as a s
 tree_classe_rpart4_training <- rpart(classe ~ roll_dumbbell + pitch_dumbbell+yaw_dumbbell+total_accel_belt+gyros_arm_x+gyros_arm_y+gyros_arm_z+magnet_forearm_x+magnet_forearm_y+magnet_forearm_z+d_adelmo+d_charles+d_carlitos+d_eurico+d_jeremy+cvtd_timestamp.f, data=pml_training)
 tree_classe_rpart4_training
 rpart.plot(tree_classe_rpart4_training)
-pred_classe4_training <- predict(tree_classe_rpart4_training, type="class",data=pml_training)
-table(pred_classe4_training)
-table(pred_classe4_training,pml_training$classe)
-pred_classe4_testing <- predict(tree_classe_rpart4_training, type="class",data=pml_testing)
-table(pred_classe4_testing)
+pred_classe4_rpart_training <- predict(tree_classe_rpart4_training, type="class",data=pml_training)
+table(pred_classe4_rpart_training)
+table(pred_classe4_rpart_training,pml_training$classe)
+pred_classe4_rpart_testing <- predict(tree_classe_rpart4_training, type="class",data=pml_testing)
+table(pred_classe4_rpart_testing)
 ```
 
 ##
@@ -206,6 +206,20 @@ rf.tree_classe_ <- randomForest(classe ~ roll_dumbbell + pitch_dumbbell+yaw_dumb
 pred_classe_rf=predict(rf.tree_classe_)
 table(pred_classe_rf)
 table(pred_classe_rf,pml_training$classe)
+# pred_classe_rf_testing=predict(rf.tree_classe_,pml_testing)
 importance(rf.tree_classe_)
 varImpPlot(rf.tree_classe_)
 ```
+
+Now let's show some comparisons of the classifiers
+```{R comparing classifiers}
+##
+## classification tree vs random forest
+##
+table(pred_classe4_rpart_training,pred_classe_rf)
+# table(pred_classe4_rpart_testing,pred_classe_rf_testing)
+##
+## classification tree vs one vs all
+##
+table(pml_training$pmax_training,pred_classe_rf)
+# table(pml_testing$pmax_testing,pred_classe_rf_testing)
