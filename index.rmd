@@ -1,0 +1,145 @@
+---
+title: "harold_floudering20180809"
+author: "Harold Pollack"
+date: "8/10/2018"
+output: html_document
+---
+
+##
+##   loading required libraries
+##
+
+```{r}
+library("caret", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
+library("dbplyr", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
+library("e1071", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
+library("gbm", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
+library("Hmisc", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
+library("ISLR", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
+library("randomForest", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
+library("rpart", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
+library("rpart.plot", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
+library("tidyverse", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
+```
+
+##
+## load training and testing datasets. This step seems to often fail
+```{R}
+pml_training <- read.csv("pml-training.csv")
+pml_testing <- read.csv("pml-testing.csv")
+##
+##
+## Now set up classe dummies for one vs all
+##
+pml_training$classe_A <- as.numeric(pml_training$classe=="A")
+pml_training$classe_B <- as.numeric(pml_training$classe=="B")
+pml_training$classe_C <- as.numeric(pml_training$classe=="C")
+pml_training$classe_D <- as.numeric(pml_training$classe=="D")
+pml_training$classe_E <- as.numeric(pml_training$classe=="E")
+```
+
+```{R}
+##
+## user name dummies in training set
+##
+pml_training$d_adelmo<-as.numeric((pml_training$user_name=="adelmo"))
+pml_training$d_charles<-as.numeric((pml_training$user_name=="charles"))
+pml_training$d_carlitos<-as.numeric((pml_training$user_name=="carlitos"))
+pml_training$d_eurico<-as.numeric((pml_training$user_name=="eurico"))
+pml_training$d_jeremy<-as.numeric((pml_training$user_name=="jeremy"))
+pml_training$d_pedro<-as.numeric((pml_training$user_name=="pedro"))
+```
+
+##
+## user name dummies in test set
+##
+
+pml_testing$d_adelmo<-as.numeric((pml_testing$user_name=="adelmo"))
+pml_testing$d_charles<-as.numeric((pml_testing$user_name=="charles"))
+pml_testing$d_carlitos<-as.numeric((pml_testing$user_name=="carlitos"))
+pml_testing$d_eurico<-as.numeric((pml_testing$user_name=="eurico"))
+pml_testing$d_jeremy<-as.numeric((pml_testing$user_name=="jeremy"))
+pml_testing$d_pedro<-as.numeric((pml_testing$user_name=="pedro"))
+
+##
+## Time stamps
+##
+
+pml_training$cvtd_timestamp_d1 <- as.numeric(pml_training$cvtd_timestamp=="02/12/2011 14:58")    
+ pml_testing$cvtd_timestamp_d1 <- as.numeric(pml_testing$cvtd_timestamp=="02/12/2011 14:58")    
+pml_training$cvtd_timestamp_d2 <- as.numeric(pml_training$cvtd_timestamp=="02/12/2011 14:58")    
+ pml_testing$cvtd_timestamp_d2 <- as.numeric(pml_testing$cvtd_timestamp=="02/12/2011 14:58")    
+pml_training$cvtd_timestamp_d3 <- as.numeric(pml_training$cvtd_timestamp=="02/12/2011 14:58")    
+ pml_testing$cvtd_timestamp_d3 <- as.numeric(pml_testing$cvtd_timestamp=="02/12/2011 14:58")    
+pml_training$cvtd_timestamp_d4 <- as.numeric(pml_training$cvtd_timestamp=="02/12/2011 14:58")    
+ pml_testing$cvtd_timestamp_d4 <- as.numeric(pml_testing$cvtd_timestamp=="02/12/2011 14:58")    
+pml_training$cvtd_timestamp_d5 <- as.numeric(pml_training$cvtd_timestamp=="02/12/2011 14:58")    
+ pml_testing$cvtd_timestamp_d5 <- as.numeric(pml_testing$cvtd_timestamp=="02/12/2011 14:58")    
+pml_training$cvtd_timestamp_d6 <- as.numeric(pml_training$cvtd_timestamp=="02/12/2011 14:58")    
+ pml_testing$cvtd_timestamp_d6 <- as.numeric(pml_testing$cvtd_timestamp=="02/12/2011 14:58")    
+
+```{R}
+pml_training$cvtd_timestamp_d7 <- as.numeric(pml_training$cvtd_timestamp=="02/12/2011 14:58")    
+ pml_testing$cvtd_timestamp_d7 <- as.numeric(pml_testing$cvtd_timestamp=="02/12/2011 14:58")    
+ pml_training$cvtd_timestamp_d8 <- as.numeric(pml_training$cvtd_timestamp=="02/12/2011 14:59") 
+ pml_testing$cvtd_timestamp_d8 <- as.numeric(pml_testing$cvtd_timestamp=="02/12/2011 14:59") 
+ pml_training$cvtd_timestamp_d9 <- as.numeric(pml_training$cvtd_timestamp=="05/12/2011 11:23") 
+ pml_testing$cvtd_timestamp_d9 <- as.numeric(pml_testing$cvtd_timestamp=="05/12/2011 11:23") 
+ pml_training$cvtd_timestamp_d10 <- as.numeric(pml_training$cvtd_timestamp=="05/12/2011 11:24") 
+ pml_testing$cvtd_timestamp_d10 <- as.numeric(pml_testing$cvtd_timestamp=="05/12/2011 11:24") 
+ pml_training$cvtd_timestamp_d11 <- as.numeric(pml_training$cvtd_timestamp=="05/12/2011 11:25") 
+ pml_testing$cvtd_timestamp_d11 <- as.numeric(pml_testing$cvtd_timestamp=="05/12/2011 11:25") 
+ pml_training$cvtd_timestamp_d12 <- as.numeric(pml_training$cvtd_timestamp=="05/12/2011 14:22") 
+ pml_testing$cvtd_timestamp_d12 <- as.numeric(pml_testing$cvtd_timestamp=="05/12/2011 14:22") 
+ pml_training$cvtd_timestamp_d13 <- as.numeric(pml_training$cvtd_timestamp=="05/12/2011 14:23") 
+ pml_testing$cvtd_timestamp_d13 <- as.numeric(pml_testing$cvtd_timestamp=="05/12/2011 14:23") 
+ pml_training$cvtd_timestamp_d14 <- as.numeric(pml_training$cvtd_timestamp=="05/12/2011 14:24") 
+ pml_testing$cvtd_timestamp_d14 <- as.numeric(pml_testing$cvtd_timestamp=="05/12/2011 14:24") 
+ pml_testing$cvtd_timestamp_d15 <- as.numeric(pml_testing$cvtd_timestamp=="28/11/2011 14:13") 
+ pml_training$cvtd_timestamp_d15 <- as.numeric(pml_training$cvtd_timestamp=="28/11/2011 14:13") 
+ pml_training$cvtd_timestamp_d16 <- as.numeric(pml_training$cvtd_timestamp=="28/11/2011 14:14") 
+ pml_testing$cvtd_timestamp_d16 <- as.numeric(pml_testing$cvtd_timestamp=="28/11/2011 14:14") 
+ pml_training$cvtd_timestamp_d17 <- as.numeric(pml_training$cvtd_timestamp=="28/11/2011 14:15") 
+ pml_testing$cvtd_timestamp_d17 <- as.numeric(pml_testing$cvtd_timestamp=="28/11/2011 14:15") 
+ pml_training$cvtd_timestamp_d18 <- as.numeric(pml_training$cvtd_timestamp=="30/11/2011 17:10") 
+ pml_testing$cvtd_timestamp_d18 <- as.numeric(pml_testing$cvtd_timestamp=="30/11/2011 17:10") 
+ pml_training$cvtd_timestamp_d19 <- as.numeric(pml_training$cvtd_timestamp=="30/11/2011 17:11") 
+ pml_testing$cvtd_timestamp_d19 <- as.numeric(pml_testing$cvtd_timestamp=="30/11/2011 17:11") 
+ pml_training$cvtd_timestamp_d20 <- as.numeric(pml_training$cvtd_timestamp=="30/11/2011 17:12") 
+ pml_testing$cvtd_timestamp_d20 <- as.numeric(pml_testing$cvtd_timestamp=="30/11/2011 17:12")  
+```
+
+##
+## Time stamp factor
+##
+```{R}
+pml_training$cvtd_timestamp.f<-as.factor(pml_training$cvtd_timestamp)
+pml_testing$cvtd_timestamp.f<-as.factor(pml_testing$cvtd_timestamp)
+```
+
+##
+## Classification trees
+##
+```{R}
+tree_classe_rpart4_training <- rpart(classe ~ roll_dumbbell + pitch_dumbbell+yaw_dumbbell+total_accel_belt+gyros_arm_x+gyros_arm_y+gyros_arm_z+magnet_forearm_x+magnet_forearm_y+magnet_forearm_z+d_adelmo+d_charles+d_carlitos+d_eurico+d_jeremy+cvtd_timestamp.f, data=pml_training)
+tree_classe_rpart4_training
+rpart.plot(tree_classe_rpart4_training)
+pred_classe4_training <- predict(tree_classe_rpart4_training, type="class",data=pml_training)
+table(pred_classe4_training)
+table(pred_classe4_training,pml_training$classe)
+pred_classe4_testing <- predict(tree_classe_rpart4_training, type="class",data=pml_testing)
+table(pred_classe4_testing)
+```
+
+##
+## Random Forest
+##
+```{R}
+rf.tree_classe_ <- randomForest(classe ~ roll_dumbbell + pitch_dumbbell+yaw_dumbbell+total_accel_belt+gyros_arm_x+gyros_arm_y+gyros_arm_z+magnet_forearm_x+magnet_forearm_y+magnet_forearm_z+user_name+cvtd_timestamp.f, data=pml_training)
+
+pred_classe_rf=predict(rf.tree_classe_)
+table(pred_classe_rf)
+table(pred_classe_rf,pml_training$classe)
+importance(rf.tree_classe_)
+varImpPlot(rf.tree_classe_)
+```
