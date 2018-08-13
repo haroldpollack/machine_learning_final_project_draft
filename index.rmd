@@ -1,24 +1,34 @@
 ---
 title: "harold_floundering20180809"
 author: "Harold Pollack"
-date: "8/10/2018"
-output: html_document
+date: "8/12/2018"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
 ---
 
-##
-##   loading required libraries
-##
+
 This is Harold Pollack's final assignment. 
 
 This assignment asked us to develop a classifier to distinguish five exercise modes, labeled A-E, as practiced by six identified users. The training set contained 19,622 examples and some 189 variables.  We then were asked to predict exercise modes within a test set of 20 examples.
 
-I used this as an opportunity to investigate several classifiers. Three are presented here: (1) one-vs-all logistic regression classifiers; (2) classification trees, and (3) random forest. I also explored lda and support vector machine approaches, but the results aren't shown in this document. I learned a lot doing this assignment--including that I have major hesitancy to commit on GitHub.
+As the sociologists say, there is a manifest and a latent function to this assignment. The manifest function is to demonstrate understanding of ML methods to produce reasonable classifiers in these data. The latent functions are to properly execute many mundane aspects of R coding to handle and process the dataset, and to navigate the frustrating aspects of posting the results. Within the available time constraints, I learned a lot, but have a decent way to go on both aspects. 
 
-Each of the classifiers provided insight. Random forest provided by far the most accurate fit to the training set. 
+Much of what I learned was mundane, such as how to label basic cross-tabs using the expss package. All are important.I wish I had more time to explore the methodological aspects of the assignment.
 
-Somewhat unfortunately, one factor variable—a timestamp—was by far the most important in predicting exercise mode. If I had greater time, I would have implemented a cross-validation set to explore the over-fitting issue. It appeared clear from a simple cross-tab of the time stamp with outcomes that the time-stamp was super-predictive.
+I learned much doing this assignment--including that my hesitancy to commit says much about my relationship with GitHub. Ironically, the mechanics of GitHub and basic R programming provided greater challenges than the specific ML methods. I also experienced many odd mechanical problems, including challenges getting plots to post. 
 
+I mainly used the assignment as an opportunity to investigate several classifiers. Three are presented here: (1) one-vs-all logistic regression classifiers; (2) classification trees, (3) support vector machines, and (4) random forest. I also explored lda. Results for thse aren't shown in the present document. I also experimented with majority voting, finding some improvement in accuracy within the training set. I ran out of time at the deadline in properly exploring these results. 
 
+On the substance, each of the classifiers provided insight. As noted below, random forest provided by far the most accurate fit within the training set. SVM with a nonlinear kernel also performed well.
+
+Unfortunately, one fairly uninteresting factor variable—which was a timestamp—was by far the most important in predicting exercise mode. If I had greater time, I would have implemented a cross-validation set to properly explore related over-fitting issues.  
+
+##
+##   loading required libraries
+##
+Let's load required libraries, including expss, which makes nice cross-tabs.
 ```{R initialize libraries, warning=FALSE,message=FALSE}
 library("caret", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
 library("dbplyr", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
@@ -30,24 +40,30 @@ library("randomForest", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Re
 library("rpart", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
 library("rpart.plot", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
 library("tidyverse", lib.loc="/Library/Frameworks/R.framework/Versions/3.4/Resources/library")
+##
+## expss allows cross-tabs with readable labels
+##
+## install.packages("expss")
+library(expss)
 ```
 
 ##
 ## load training and testing datasets. 
 ##
-Here are also some cross-tabs 
-```{R read datasets and descriptives}
+Here are also some cross-tabs to understand the basic data. Shows is the distribution of the posited dependent variable classe. I also showed the cross-tab with individual users.
+```{R read datasets and descriptives, warning=FALSE,message=FALSE}
 pml_training <- read.csv("pml-training.csv")
 pml_testing <- read.csv("pml-testing.csv")
 table(pml_training$classe)
 table(pml_training$classe,pml_training$user_name)
-table(pml_training$classe,pml_training$cvtd_timestamp)
+pml_training$named_classe <- paste("workout type ",pml_training$classe)
+table(pml_training$named_classe)
 ```
 ##
 ##
 ## Now set up classe dummies for one vs all
 ##
-```{R set up classe dummies for one vs. all}
+```{R set up classe dummies for one vs. all, echo=FALSE, warning=FALSE, message=FALSE}
 pml_training$classe_A <- as.numeric(pml_training$classe=="A")
 pml_training$classe_B <- as.numeric(pml_training$classe=="B")
 pml_training$classe_C <- as.numeric(pml_training$classe=="C")
@@ -55,7 +71,7 @@ pml_training$classe_D <- as.numeric(pml_training$classe=="D")
 pml_training$classe_E <- as.numeric(pml_training$classe=="E")
 ```
 
-```{R user names in training set}
+```{R user names in training set, echo=FALSE, warning=FALSE}
 ##
 ## user name dummies in training set
 ##
@@ -70,7 +86,7 @@ pml_training$d_pedro<-as.numeric((pml_training$user_name=="pedro"))
 ##
 ## (User name dummies in test set)
 ##
-```{R user names in test set}
+```{R user names in test set, echo=FALSE, warning=FALSE}
 pml_testing$d_adelmo<-as.numeric((pml_testing$user_name=="adelmo"))
 pml_testing$d_charles<-as.numeric((pml_testing$user_name=="charles"))
 pml_testing$d_carlitos<-as.numeric((pml_testing$user_name=="carlitos"))
@@ -81,7 +97,7 @@ pml_testing$d_pedro<-as.numeric((pml_testing$user_name=="pedro"))
 ##
 ## (Time stamps)
 ##
-``` {R time stamps, echo=FALSE}
+``` {R time stamps, echo=FALSE,warning=FALSE}
 pml_training$cvtd_timestamp_d1 <- as.numeric(pml_training$cvtd_timestamp=="02/12/2011 14:58")    
  pml_testing$cvtd_timestamp_d1 <- as.numeric(pml_testing$cvtd_timestamp=="02/12/2011 14:58")    
 pml_training$cvtd_timestamp_d2 <- as.numeric(pml_training$cvtd_timestamp=="02/12/2011 14:58")    
@@ -126,9 +142,9 @@ pml_training$cvtd_timestamp_d7 <- as.numeric(pml_training$cvtd_timestamp=="02/12
 ```
 
 ##
-## (Time stamp and username as factor)
+## (Username as factor)
 ##
-```{R time stamp factor, echo=FALSE}
+```{R time stamp factor, echo=FALSE,warning=FALSE,message=FALSE}
 pml_training$cvtd_timestamp.f<-as.factor(pml_training$cvtd_timestamp)
 pml_testing$cvtd_timestamp.f<-as.factor(pml_testing$cvtd_timestamp)
 pml_training$user_name.f<-as.factor(pml_training$user_name)
@@ -137,9 +153,32 @@ table(pml_training$user_name.f)
 ```
 
 ##
-## one vs all
+## Random Forest
 ##
-Now I implemented a one vs. all classifier.
+This was by-far the most accurate classifier I was able to implement.If I had more time, I would have implemented a cross-validation set to explore the over-fitting issue. It appeared clear from a simple cross-tab (see below) of the time stamp with the dependent variable that the time-stamp was genuinely predictive. Within the training set, five time stamps perfectly predicted the dependent variable. Several others narrowed the dependent variable to one or two highly prevalent outcomes. 
+
+Thsi pattern is reflected in the dominance of the time stamp in the variable importance plot. The roll, pitch, and yaw of the dumbbell, as well as the total acceleration of the belt were also predictive.
+
+I had a surprising amount of mechanical difficulty getting the predicted values to work in the test set. Using the RF values exclusively on the test set, I agreed with 16/20 of the suggested test answers. Two of the remaining discrepencies matched results from a classification tree. Over-fitting presumably played some role here. I would have liked to have constructed a cross-validation set within the training set to pursue this analysis more carefully. Majority-voting in the test set slightly improved things, though I still computed a disrepant prediction for two out of the twenty examples.
+
+```{R random forest, echo=FALSE,warning=FALSE,message=FALSE}
+rf.tree_classe_ <- randomForest(classe ~ roll_dumbbell + pitch_dumbbell+yaw_dumbbell+total_accel_belt+gyros_arm_x+gyros_arm_y+gyros_arm_z+magnet_forearm_x+magnet_forearm_y+magnet_forearm_z+user_name+cvtd_timestamp.f, data=pml_training)
+
+pred_classe_rf=predict(rf.tree_classe_)
+pml_training$pred_classe_rf=predict(rf.tree_classe_)
+table(pred_classe_rf)
+# pml_testing$pred_classe_rf=predict(rf.tree_classe_,pml_testing)
+importance(rf.tree_classe_)
+varImpPlot(rf.tree_classe_)
+#pred_classe_rf_testing=predict(rf.tree_classe_,pml_testing)
+# table(pred_classe_rf_testing)
+# pred_classe_rf_testing
+```
+
+##
+## one vs all classifier
+##
+Now I implemented a one vs. all classifier, just to see how it would perform, and because the Logit coefficients are readily interpreted. 
 ```{R one vs. all classifier, echo=FALSE, warning=FALSE}
 dlogit_classe_A <- glm(as.factor(classe_A) ~ roll_dumbbell + pitch_dumbbell+yaw_dumbbell+total_accel_belt+gyros_arm_x+gyros_arm_y+gyros_arm_z+magnet_forearm_x+magnet_forearm_y+magnet_forearm_z+d_adelmo+d_charles+d_carlitos+d_eurico+d_adelmo+d_jeremy+d_pedro+cvtd_timestamp_d1+cvtd_timestamp_d2+cvtd_timestamp_d3+cvtd_timestamp_d4+cvtd_timestamp_d5+cvtd_timestamp_d6+cvtd_timestamp_d7+cvtd_timestamp_d8+cvtd_timestamp_d9+cvtd_timestamp_d10+cvtd_timestamp_d11+cvtd_timestamp_d12+cvtd_timestamp_d13+cvtd_timestamp_d14+cvtd_timestamp_d15+cvtd_timestamp_d16+cvtd_timestamp_d17+cvtd_timestamp_d18+cvtd_timestamp_d19+cvtd_timestamp_d20 , data=pml_training, family=binomial(link="logit"))
 
@@ -174,41 +213,63 @@ pred_E_testing<-predict(dlogit_classe_E,pml_testing,type="response")
 
 pml_training$pred_probs_training<-data.frame(A=pred_A_training,B=pred_B_training,C=pred_C_training,D=pred_D_training,E=pred_E_training)
 pml_training$pmax_training<-apply(pml_training$pred_probs_training,1,which.max)
-
+workout_string <- c("A","B","C","D","E")
+pml_training$pmax_symbol_training<-workout_string[pml_training$pmax_training]
 pml_testing$pred_probs_testing<-data.frame(A=pred_A_testing,B=pred_B_testing,C=pred_C_testing,D=pred_D_testing,E=pred_E_testing)
 pml_testing$pmax_testing<-apply(pml_testing$pred_probs_testing,1,which.max)
-table(pml_training$pmax_training,pml_training$classe)
+table(pml_testing$pmax_testing)
+pml_testing$pmax_symbol_testing<-workout_string[pml_testing$pmax_testing]
+table(pml_training$pmax_symbol_training)
+
 ```
+
 
 ##
 ## Classification trees--complete with cool diagram.
 ##
-One interesting aspect here was that I had originally coded the timestamp as a series of dummy variables. The resulting classifier was notably worse. Note that the tree report is pretty opaque compared with the rpart.plot.
+One interesting aspect here was that I had originally coded the timestamp as a series of dummy variables. The resulting classifier was notably worse for both random forest and the classification tree. The dummy structure did not take advantage of the logical interconnections between these dummies in forming the trees. Of course the classification tree report is pretty opaque compared with the rpart.plot.
 
-```{R classification trees}
+```{R classification trees, echo=FALSE, warning=FALSE}
 tree_classe_rpart4_training <- rpart(classe ~ roll_dumbbell + pitch_dumbbell+yaw_dumbbell+total_accel_belt+gyros_arm_x+gyros_arm_y+gyros_arm_z+magnet_forearm_x+magnet_forearm_y+magnet_forearm_z+d_adelmo+d_charles+d_carlitos+d_eurico+d_jeremy+cvtd_timestamp.f, data=pml_training)
+#
 tree_classe_rpart4_training
+#
 rpart.plot(tree_classe_rpart4_training)
-pred_classe4_rpart_training <- predict(tree_classe_rpart4_training, type="class",data=pml_training)
+## ! Classification Tree. (/Users/haroldpollack/Documents/Coursera_data_science2/machine_learning_assignment/machine_learning_final_project_draft2B/index_files/classification trees-1.png)
+pred_classe4_rpart_training <- predict(tree_classe_rpart4_training, type="class",pml_training)
+pml_training$pred_classe4_rpart_training <- pred_classe4_rpart_training
 table(pred_classe4_rpart_training)
 table(pred_classe4_rpart_training,pml_training$classe)
-pred_classe4_rpart_testing <- predict(tree_classe_rpart4_training, type="class",data=pml_testing)
+pred_classe4_rpart_testing <- predict(tree_classe_rpart4_training, type="class",pml_testing)
+pml_testing$pred_classe4_rpart_testing <- pred_classe4_rpart_testing
 table(pred_classe4_rpart_testing)
+# pred_classe4_rpart_testing
 ```
 
 ##
-## Random Forest
+## Support vector machines with radial, poly, and linear kernels.
 ##
-This was by-far the most accurate classifier I was able to implement.If I had more time, I would have implemented a cross-validation set to explore the over-fitting issue. Note the dominance of the time stamp in the variable importance plot.
-```{R random forest}
-rf.tree_classe_ <- randomForest(classe ~ roll_dumbbell + pitch_dumbbell+yaw_dumbbell+total_accel_belt+gyros_arm_x+gyros_arm_y+gyros_arm_z+magnet_forearm_x+magnet_forearm_y+magnet_forearm_z+user_name+cvtd_timestamp.f, data=pml_training)
+As you can see below, the poly and radial kernals provided notably more accurate performance in the training set than did the linear kernel. I had a surprising amount of mechanical difficulty here generating proper predicted values. 
+```{R SVM classifier, echo=FALSE, warning=FALSE}
+modelfit_svm_classe_radial <- svm(classe ~ roll_dumbbell + pitch_dumbbell+yaw_dumbbell+total_accel_belt+gyros_arm_x+gyros_arm_y+gyros_arm_z+magnet_forearm_x+magnet_forearm_y+magnet_forearm_z+d_adelmo+d_charles+d_carlitos+d_eurico+d_jeremy , data=pml_training, kernel="radial")
+modelfit_svm_classe_poly <- svm(classe ~ roll_dumbbell + pitch_dumbbell+yaw_dumbbell+total_accel_belt+gyros_arm_x+gyros_arm_y+gyros_arm_z+magnet_forearm_x+magnet_forearm_y+magnet_forearm_z+d_adelmo+d_charles+d_carlitos+d_eurico+d_jeremy , data=pml_training, kernel="poly")
+modelfit_svm_classe_linear <- svm(classe ~ roll_dumbbell + pitch_dumbbell+yaw_dumbbell+total_accel_belt+gyros_arm_x+gyros_arm_y+gyros_arm_z+magnet_forearm_x+magnet_forearm_y+magnet_forearm_z+d_adelmo+d_charles+d_carlitos+d_eurico+d_jeremy , data=pml_training, kernel="linear")
+# table(modelfit_svm_classe_radial$fitted,modelfit_svm_classe_poly$fitted)
+# table(modelfit_svm_classe_radial$fitted,modelfit_svm_classe_linear$fitted)
+# table(modelfit_svm_classe_poly$fitted,modelfit_svm_classe_linear$fitted)
+pml_training$predicted_svm_classe_radial<-modelfit_svm_classe_radial$fitted
+pml_training$predicted_svm_classe_poly<-modelfit_svm_classe_poly$fitted
+pml_training$predicted_svm_classe_linear<-modelfit_svm_classe_linear$fitted
+pml_training$d_accuracy_radial<-(as.numeric(modelfit_svm_classe_radial$fitted==pml_training$classe))
+pml_training$d_accuracy_poly<-(as.numeric(modelfit_svm_classe_poly$fitted==pml_training$classe))
+pml_training$d_accuracy_linear<-(as.numeric(modelfit_svm_classe_linear$fitted==pml_training$classe))
+# table(d_accuracy_linear)
+# table(d_accuracy_poly)
+# table(d_accuracy_radial)
+# table(d_accuracy_linear,d_accuracy_radial)
+pml_training$num_accurate<-pml_training$d_accuracy_linear+pml_training$d_accuracy_poly+pml_training$d_accuracy_radial
+table(pml_training$num_accurate,pml_training$classe)
 
-pred_classe_rf=predict(rf.tree_classe_)
-table(pred_classe_rf)
-table(pred_classe_rf,pml_training$classe)
-# pred_classe_rf_testing=predict(rf.tree_classe_,pml_testing)
-importance(rf.tree_classe_)
-varImpPlot(rf.tree_classe_)
 ```
 
 Now let's show some comparisons of the classifiers
@@ -219,7 +280,96 @@ Now let's show some comparisons of the classifiers
 table(pred_classe4_rpart_training,pred_classe_rf)
 # table(pred_classe4_rpart_testing,pred_classe_rf_testing)
 ##
-## classification tree vs one vs all
+## one vs all vs random forest
 ##
 table(pml_training$pmax_training,pred_classe_rf)
-# table(pml_testing$pmax_testing,pred_classe_rf_testing)
+##
+## one vs all vs classification tree
+##
+table(pml_training$pmax_training,pred_classe4_rpart_training)
+```
+#
+# Now make reasonable labeled variables
+#
+```{R add training labels, echo=FALSE, warning=FALSE}
+pml_training$named_classe <- paste("workout type ",pml_training$classe)
+pml_training = apply_labels(pml_training,
+    user_name = "User Name",
+    d_accuracy_linear = "Accuracy of SVM with linear kernel",
+    d_accuracy_poly = "Accuracy of SVM with polynomial kernel",
+    d_accuracy_radial = "Accuracy of SVM with radial kernel",
+    num_accurate = "Number of accurate SVM predictions",
+    classe = "workout type--ground truth in training set",
+    named_classe = "workout type--ground truth in training set",
+    pred_classe4_rpart_training = "RPART predicted workout type",
+    cvtd_timestamp = "Time stamp",
+    predicted_svm_classe_radial = "Support vector machine radial kernel training prediction",
+    predicted_svm_classe_linear = "Support vector machine linear kernel training prediction",
+    predicted_svm_classe_poly = "Support vector machine poly kernel training prediction",
+    pred_classe_rf = "Random forest training prediction",
+    pmax_training = "One vs all prediction--numeric",
+    pmax_symbol_training = "One vs all prediction--symbol"
+)
+#
+# testing labels
+#
+pml_testing = apply_labels(pml_testing,
+    user_name = "User Name",
+    pred_classe4_rpart_testing = "RPART predicted workout type",
+    cvtd_timestamp = "Time stamp",
+    # predicted_svm_classe_radial = "SVM radial kernel training prediction",
+    # predicted_svm_classe_linear = "SVM linear kernel training prediction",
+    # predicted_svm_classe_poly = "SVM poly kernel training prediction",
+    pred_classe_rf = "RF training prediction",
+    pmax_testing = "One vs all prediction--numeric",
+    pmax_symbol_testing = "One vs all prediction--symbol"
+)
+#
+# trying crosstabs with labels
+#
+```
+
+Let's print out some crosstabs for the classification tree. Let's also examine when it differs from the random forest. 
+
+```{R}
+cro(pml_training$classe,pml_training$cvtd_timestamp)
+cro(pml_training$pred_classe4_rpart_training)
+cro(pml_training$pred_classe4_rpart_training,pml_training$named_classe)
+cro(pml_training$pred_classe4_rpart_training,pml_training$pred_classe_rf)
+cro(pml_training$pred_classe4_rpart_training,pml_training$pred_classe_rf,pml_training$named_classe)
+```
+
+Now let's print out some tables for the support vector machine with different kernels. The linear kernel is notably less accurate--and less time-consuming to estimate--than the polynomial or radial kernels.
+```{R}
+cro(pml_training$predicted_svm_classe_radial,pml_training$named_classe)
+cro(pml_training$predicted_svm_classe_poly,pml_training$named_classe)
+cro(pml_training$predicted_svm_classe_linear,pml_training$named_classe)
+cro(pml_training$d_accuracy_linear)
+cro(pml_training$d_accuracy_poly)
+cro(pml_training$d_accuracy_radial)
+cro(pml_training$d_accuracy_linear,pml_training$d_accuracy_radial)
+cro(pml_training$d_accuracy_poly,pml_training$d_accuracy_radial)
+cro(pml_training$predicted_svm_classe_radial,pml_training$predicted_svm_classe_poly)
+cro(pml_training$predicted_svm_classe_radial,pml_training$predicted_svm_classe_linear)
+pml_training$num_accurate<-pml_training$d_accuracy_linear+pml_training$d_accuracy_poly+pml_training$d_accuracy_radial
+# cro(pml_training$num_accurate)
+```
+
+Now let's get to Random forest.
+
+```{R}
+cro(pml_training$pred_classe_rf,pml_training$named_classe)
+cro(pml_training$predicted_svm_classe_radial,pml_training$pred_classe_rf)
+# cro_cpct(pml_training$pred_classe_rf,pml_training$named_classe)
+# cro_cpct_responses(pml_training$pred_classe_rf,pml_training$named_classe)
+```
+
+The 1 vs all classifier.
+
+```{R}
+# cro(pml_training$pmax_training,pml_training$named_classe)
+cro(pml_training$pmax_symbol_training,pml_training$named_classe)
+# cro_cpct(pml_training$pmax_training,pml_training$named_classe)
+# cro_cpct_responses(pml_training$pmax_training,pml_training$named_classe)
+```
+
